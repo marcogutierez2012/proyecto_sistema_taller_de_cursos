@@ -1,0 +1,39 @@
+package Conectar.Proyecto;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+import javax.swing.JOptionPane;
+
+public class ConexionBD {
+	// declaramos variables de tipo cadena y asignamos valores
+	String url="jdbc:mysql://localhost:3306/bdtallerverano";
+	String usuario="root";
+	String password="992478429xX@";
+	Connection con;
+			
+	// creamos el metodo
+	public Connection ConexionMysql(){
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			// Clase para conectar con la BD...
+			con=DriverManager.getConnection(url, usuario, password);
+			
+					//emitimos un mensaje de confirmacion que se conecto con la BD...
+					//utilizamos una condicion
+			if(con!=null){
+				System.out.println("Conexion Exitosa");
+			}else{
+				System.out.println("Error al conectarse a la base de datos!");
+			}
+		}catch (ClassNotFoundException e){
+			e.printStackTrace();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+				
+		// retornamos la conexion
+		return con;
+	}
+}

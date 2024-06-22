@@ -1,0 +1,5 @@
+@CHARSET "UTF-8";
+
+#table-hover tr:hover {
+  background-color: #86b8e3; /* Color de fondo cuando se hace hover */
+}

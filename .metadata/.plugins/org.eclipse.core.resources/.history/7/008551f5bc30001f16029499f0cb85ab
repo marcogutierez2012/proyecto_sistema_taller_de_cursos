@@ -1,0 +1,371 @@
+-- phpMyAdmin SQL Dump
+-- version 3.5.1
+-- http://www.phpmyadmin.net
+--
+-- Servidor: localhost
+-- Tiempo de generación: 29-06-2023 a las 02:13:06
+-- Versión del servidor: 5.5.24-log
+-- Versión de PHP: 5.4.3
+
+SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8 */;
+
+--
+-- Base de datos: `bdtallerverano`
+--
+
+DELIMITER $$
+--
+-- Procedimientos
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ACTUALIZAR_CURSO`(idcur char(4),nomcur varchar(20),descur varchar(50),diacur varchar(20),hinicur char(5),
+										hfincur char(5),vaccur int)
+BEGIN
+	update tbl_curso set nomcurso=nomcur,descurso=descur,diacurso=diacur,horinicurso=hinicur,horfincurso=hfincur,vaccurso=vaccur
+    where idcurso=idcur;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ACTUALIZAR_DOCENTE`(iddoc char(4),dnidoc char(8),nomdoc varchar(50),apedoc varchar(50),
+										cordoc varchar(50),teldoc varchar(11))
+BEGIN
+	UPDATE TBL_DOCENTE SET dnidocente=dnidoc,nomdocente=nomdoc,apedocente=apedoc,cordocente=cordoc,
+    teldocente=teldoc 
+    where iddocente=iddoc;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ACTUALIZAR_ESTUDIANTE`(idest char(10),dniest char(8),nomest varchar(50),apeest varchar(50),corest varchar(50),
+										telest varchar(11))
+BEGIN
+	update tbl_estudiante set dniestudiante=dniest,nomestudiante=nomest,apeestudiante=apeest,corestudiante=corest,telestudiante=telest
+    where idestudiante=idest;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ASIGNAR_DOCENTE_CURSO`(iddoc char(4),idcur varchar(4))
+BEGIN
+	INSERT INTO tbl_docentecurso (iddocente,idcurso)
+	values (iddoc, idcur);
+    
+    update tbl_docente set estadodocente='si'
+    where iddocente=iddoc;
+    
+    update tbl_curso set estadocurso='si'
+    where idcurso=idcur;
+	END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_BUSCAR_CURSO`(busca varchar(20))
+BEGIN
+	select * from tbl_curso
+    where nomcurso like concat(busca,'%');
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_BUSCAR_CURSOID`(busca varchar(20))
+BEGIN
+	select * from tbl_curso
+    where idcurso like concat(busca,'%');
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_BUSCAR_DOCENTE`(busca varchar(20))
+BEGIN
+	select * from tbl_docente
+    where dnidocente like concat(busca,'%');
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_BUSCAR_ESTUDIANTE`(busca varchar(20))
+BEGIN
+	select * from tbl_estudiante
+    where dniestudiante like concat(busca,'%');
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_BUSCAR_INSCRIPCION`(busca varchar(20))
+BEGIN
+	select i.numinscrip as Numero,e.dniestudiante as Dni,concat(e.apeestudiante,', ',e.nomestudiante) as Estudiante, c.nomcurso as Curso,
+    c.diacurso as Dia,c.horinicurso as Inicio,c.horfincurso as Fin,i.fecinscrip as Fecha
+    from tbl_inscripcion as i
+    inner join tbl_estudiante as e
+    on i.idestudiante=e.idestudiante
+    inner join tbl_curso as c
+    on i.idcurso=c.idcurso
+    where e.dniestudiante like concat(busca,'%');
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ELIMINAR_CURSO`(idcur char(4))
+BEGIN
+	delete from tbl_curso
+    where idcurso=idcur;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ELIMINAR_DOCENTE`(iddoc char(4))
+BEGIN
+	delete from tbl_docente
+    where iddocente=iddoc;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ELIMINAR_ESTUDIANTE`(idest char(10))
+BEGIN
+	delete from tbl_estudiante
+    where idestudiante=idest;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GENERAR_INSCRIPCION`(idest char(10),idcur char(4),fecins date)
+BEGIN
+	INSERT INTO tbl_inscripcion (idestudiante,idcurso,fecinscrip)
+	values (idest,idcur,fecins);
+    
+    update tbl_estudiante set estadoestudiante = 'si'
+    where idestudiante=idest;
+    
+    update tbl_curso set vaccurso=vaccurso-1
+    where idcurso=idcur and estadocurso='si';
+	END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_liberar_cursos`(coddoc CHAR(4), idcur CHAR(4))
+BEGIN
+    DECLARE v_cantidad_inscripciones INT;
+    
+    -- Obtener la cantidad de inscripciones para el curso
+    SELECT COUNT(*) INTO v_cantidad_inscripciones FROM tbl_inscripcion WHERE idcurso = idcur;
+    
+    -- Actualizar la tabla tbl_curso para agregar las vacantes según la cantidad de inscripciones eliminadas
+    UPDATE tbl_curso SET estadocurso = 'no', vaccurso = vaccurso + v_cantidad_inscripciones WHERE idcurso = idcur;
+    
+    -- Actualizar el estado de los estudiantes a "no" si no están asignados a otros cursos
+    UPDATE tbl_estudiante SET estadoestudiante = 'no' WHERE idestudiante IN (
+        SELECT idestudiante FROM tbl_inscripcion WHERE idestudiante NOT IN (
+            SELECT idestudiante FROM tbl_inscripcion WHERE idcurso != idcur
+        )
+    );
+    
+    -- Actualizar las otras tablas y utilizar el ID del estudiante obtenido anteriormente
+    UPDATE tbl_docente SET estadodocente = 'no' WHERE iddocente = coddoc AND iddocente NOT IN (SELECT iddocente FROM tbl_docentecurso WHERE idcurso != idcur);
+    DELETE FROM tbl_docentecurso WHERE iddocente = coddoc AND idcurso = idcur;
+    DELETE FROM tbl_inscripcion WHERE idcurso = idcur;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_LISTAR_CURSO_GENERAL`()
+BEGIN
+	select * from tbl_curso;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_LISTAR_DOCENTE_CURSO_ASIGNADO`()
+BEGIN
+	select d.iddocente as iddocente, d.dnidocente as Dni,concat(d.apedocente,', ',d.nomdocente) as Docente, c.idcurso as idcurso, c.nomcurso as Curso,c.diacurso as Dia,c.horinicurso as Inicio,c.horfincurso as Fin
+    from tbl_docente as d
+    inner join tbl_docentecurso as dc
+    on d.iddocente=dc.iddocente
+    inner join tbl_curso as c
+    on dc.idcurso=c.idcurso;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_LISTAR_DOCENTE_GENERAL`()
+BEGIN
+	select * from tbl_docente;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_LISTAR_ESTUDIANTE_GENERAL`()
+BEGIN
+	select * from tbl_estudiante;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_LISTAR_INSCRIPCION`()
+BEGIN
+	select i.numinscrip as Numero, e.idestudiante as idestudiante, e.dniestudiante as Dni,concat(e.apeestudiante,', ',e.nomestudiante) as Estudiante, c.idcurso as idcurso, c.nomcurso as Curso,
+    c.diacurso as Dia,c.horinicurso as Inicio,c.horfincurso as Fin,i.fecinscrip as Fecha
+    from tbl_inscripcion as i
+    inner join tbl_estudiante as e
+    on i.idestudiante=e.idestudiante
+    inner join tbl_curso as c
+    on i.idcurso=c.idcurso;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_quitar_inscripcion`(idest char(10), idcur CHAR(4))
+BEGIN
+    -- Actualizar la tabla tbl_curso utilizando una cláusula WHERE con una columna clave
+    UPDATE tbl_curso SET vaccurso=vaccurso+1 WHERE idcurso = idcur;
+    
+    -- Actualizar las otras tablas y utilizar el ID del estudiante obtenido anteriormente
+	UPDATE tbl_estudiante SET estadoestudiante = 'no' WHERE idestudiante = idest AND idestudiante NOT IN (SELECT idestudiante FROM tbl_inscripcion WHERE idcurso != idcur);
+    DELETE FROM tbl_inscripcion WHERE idestudiante = idest and idcurso = idcur;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_REGISTRAR_CURSO`(nomcur varchar(20),descur varchar(50),diacur varchar(20),hinicur char(5),
+										hfincur char(5),vaccur int)
+BEGIN
+	INSERT INTO tbl_curso (idcurso,nomcurso,descurso,diacurso,horinicurso,horfincurso,vaccurso)
+	SELECT CONCAT('C', LPAD(COALESCE(MAX(SUBSTRING(idcurso, 2)) + 1, 1), 3, '0')), nomcur, descur, diacur, hinicur, hfincur,
+    vaccur
+	FROM tbl_curso
+	WHERE idcurso LIKE 'C%';    
+	END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_REGISTRAR_DOCENTE`(dnidoc char(8),nomdoc varchar(50),apedoc varchar(50),
+										cordoc varchar(50),teldoc varchar(11))
+BEGIN
+	INSERT INTO tbl_docente (iddocente,dnidocente, nomdocente, apedocente, cordocente, teldocente)
+	SELECT CONCAT('D', LPAD(COALESCE(MAX(SUBSTRING(iddocente, 2)) + 1, 1), 3, '0')), dnidoc, nomdoc, apedoc, cordoc, teldoc
+	FROM tbl_docente
+	WHERE iddocente LIKE 'D%';
+	END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_REGISTRAR_ESTUDIANTE`(dniest char(8),nomest varchar(50),apeest varchar(50),
+										corest varchar(50),telest varchar(11))
+BEGIN
+	INSERT INTO tbl_estudiante (idestudiante,dniestudiante,nomestudiante,apeestudiante,corestudiante,telestudiante)
+	SELECT CONCAT('E', LPAD(COALESCE(MAX(SUBSTRING(idestudiante, 2)) + 1, 1), 9, '0')), dniest, nomest, apeest, corest,
+	telest
+	FROM tbl_estudiante
+	WHERE idestudiante LIKE 'E%';
+	END$$
+
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tbl_curso`
+--
+
+CREATE TABLE IF NOT EXISTS `tbl_curso` (
+  `idcurso` char(4) NOT NULL,
+  `nomcurso` varchar(20) NOT NULL,
+  `descurso` varchar(50) NOT NULL,
+  `diacurso` varchar(20) NOT NULL,
+  `horinicurso` char(5) NOT NULL,
+  `horfincurso` char(5) NOT NULL,
+  `vaccurso` int(11) NOT NULL,
+  `estadocurso` char(2) DEFAULT 'no',
+  PRIMARY KEY (`idcurso`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+--
+-- Volcado de datos para la tabla `tbl_curso`
+--
+
+INSERT INTO `tbl_curso` (`idcurso`, `nomcurso`, `descurso`, `diacurso`, `horinicurso`, `horfincurso`, `vaccurso`, `estadocurso`) VALUES
+('C001', 'Historia', 'Teoria de acontecimientos historicos', 'Lunes', '12:00', '14:00', 16, 'no'),
+('C002', 'Matematica', 'Teoria de matematica', 'Lunes', '11:00', '13:00', 25, 'no'),
+('C003', 'Lenguaje 1', 'Teori de lenguaje 1', 'Martes', '09:00', '12:00', 5, 'no'),
+('C004', 'Manualidades', 'Creacion de artes manuales', 'Lunes', '10:00', '12:00', 20, 'no'),
+('C006', 'Lenguaje 2', 'Teoria sobre lenguaje 2', 'Lunes', '10:00', '12:00', 10, 'no'),
+('C007', 'Lenguaje 3', 'Teori de lenguaje 3', 'Lunes', '09:00', '12:00', 16, 'no');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tbl_docente`
+--
+
+CREATE TABLE IF NOT EXISTS `tbl_docente` (
+  `iddocente` char(4) NOT NULL,
+  `dnidocente` char(8) NOT NULL,
+  `nomdocente` varchar(50) NOT NULL,
+  `apedocente` varchar(50) NOT NULL,
+  `cordocente` varchar(50) NOT NULL,
+  `teldocente` varchar(11) NOT NULL,
+  `estadodocente` char(2) DEFAULT 'no',
+  PRIMARY KEY (`iddocente`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+--
+-- Volcado de datos para la tabla `tbl_docente`
+--
+
+INSERT INTO `tbl_docente` (`iddocente`, `dnidocente`, `nomdocente`, `apedocente`, `cordocente`, `teldocente`, `estadodocente`) VALUES
+('D001', '74878420', 'Marco Antonio', 'Gutierrez Ferro', 'marcogutierrezferro@gmail.com', '912345789', 'no'),
+('D002', '42356789', 'Fredy', 'Hurtado', 'fredyhurtado@gmail.com', '986123478', 'no'),
+('D003', '75456124', 'Juan', 'Quispe', 'juanquispe@gmail.com', '954644554', 'no'),
+('D004', '75456121', 'Marcos', 'Rosales', 'marcosrosales@gmail.com', '977456412', 'no'),
+('D005', '74851412', 'Lucas', 'Quispe', 'lucas@gmail.com', '988771245', 'no');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tbl_docentecurso`
+--
+
+CREATE TABLE IF NOT EXISTS `tbl_docentecurso` (
+  `iddocente` char(4) DEFAULT NULL,
+  `idcurso` varchar(4) DEFAULT NULL,
+  UNIQUE KEY `uk_docentecurso` (`iddocente`,`idcurso`),
+  KEY `idcurso` (`idcurso`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tbl_estudiante`
+--
+
+CREATE TABLE IF NOT EXISTS `tbl_estudiante` (
+  `idestudiante` char(10) NOT NULL,
+  `dniestudiante` char(8) NOT NULL,
+  `nomestudiante` varchar(50) NOT NULL,
+  `apeestudiante` varchar(50) NOT NULL,
+  `corestudiante` varchar(50) NOT NULL,
+  `telestudiante` varchar(11) NOT NULL,
+  `estadoestudiante` char(2) DEFAULT 'no',
+  PRIMARY KEY (`idestudiante`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tbl_inscripcion`
+--
+
+CREATE TABLE IF NOT EXISTS `tbl_inscripcion` (
+  `numinscrip` int(11) NOT NULL AUTO_INCREMENT,
+  `idestudiante` char(10) NOT NULL,
+  `idcurso` varchar(4) NOT NULL,
+  `fecinscrip` date NOT NULL,
+  PRIMARY KEY (`numinscrip`),
+  UNIQUE KEY `uk_inscripcion` (`idestudiante`,`idcurso`),
+  KEY `idcurso` (`idcurso`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=81 ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tbl_usuario`
+--
+
+CREATE TABLE IF NOT EXISTS `tbl_usuario` (
+  `idusuario` int(11) NOT NULL AUTO_INCREMENT,
+  `nomusuario` varchar(20) NOT NULL,
+  `password` varchar(20) NOT NULL,
+  PRIMARY KEY (`idusuario`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+--
+-- Volcado de datos para la tabla `tbl_usuario`
+--
+
+INSERT INTO `tbl_usuario` (`idusuario`, `nomusuario`, `password`) VALUES
+(1, 'admin', '123456');
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `tbl_docentecurso`
+--
+ALTER TABLE `tbl_docentecurso`
+  ADD CONSTRAINT `tbl_docentecurso_ibfk_1` FOREIGN KEY (`iddocente`) REFERENCES `tbl_docente` (`iddocente`),
+  ADD CONSTRAINT `tbl_docentecurso_ibfk_2` FOREIGN KEY (`idcurso`) REFERENCES `tbl_curso` (`idcurso`);
+
+--
+-- Filtros para la tabla `tbl_inscripcion`
+--
+ALTER TABLE `tbl_inscripcion`
+  ADD CONSTRAINT `tbl_inscripcion_ibfk_1` FOREIGN KEY (`idestudiante`) REFERENCES `tbl_estudiante` (`idestudiante`),
+  ADD CONSTRAINT `tbl_inscripcion_ibfk_2` FOREIGN KEY (`idcurso`) REFERENCES `tbl_curso` (`idcurso`);
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
